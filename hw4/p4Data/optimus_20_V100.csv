@@ -1,0 +1,53 @@
+import keras.applications.inception_v3 as inception_v3
+from keras.datasets import cifar10
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from keras import optimizers
+import time
+from keras.models import Model
+from keras.layers import Dense, GlobalAveragePooling2D, Input
+
+
+
+
+
+
+
+base_model = inception_v3.InceptionV3(weights=None,include_top= False)
+newInput = Input(batch_shape=(0,140,140,3))
+base_model.layers.pop(0)
+newOutputs = base_model(newInput)
+intModel = Model(newInput, newOutputs)
+
+x = intModel.output
+x = GlobalAveragePooling2D()(x)
+x = Dense(1024, activation='relu')(x)
+predictions = Dense(10, activation='softmax')(x)
+model = Model(input=intModel.input, output=predictions)
+
+sgd = optimizers.SGD(lr=0.01, momentum=0.9, nesterov=True)
+model.compile(optimizer='sgd', loss='categorical_crossentropy', metrics=['accuracy'])
+
+
+
+
+
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+
+mod_images = []
+for i in range(len(x_train)):
+    image = cv2.resize(x_train[i],(140,140))
+    mod_images.append(list(image))
+    if(i%10000 == 0):
+        print(i)
+x_train_mod = np.array(mod_images).reshape(50000,140,140,3)
+
+y_train_one_hot = np.eye(10)[y_train].reshape(50000,10)
+
+
+
+
+start = time.time()
+model.fit(x_train_mod,y_train_one_hot, batch_size=128, verbose=0)
+time_taken = time.time()-start
